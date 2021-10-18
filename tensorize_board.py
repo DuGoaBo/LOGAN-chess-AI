@@ -4,11 +4,13 @@ import torch
 def tensorize_board(board):
     ret = torch.Tensor(8*8 + 3)
     if not board.turn == chess.WHITE:
-        board.apply_mirror()
+        board = board.mirror()
     for i in range(8 * 8):
         piece = board.piece_at(i)
         if piece is not None:
-            ret[i] = piece.piece_type
+            piece_code = piece.piece_type
+            sign = 2*piece.color- 1 #1 for white, -1 for black
+            ret[i] = piece_code * sign
         else:
             ret[i] = 0
     if board.has_legal_en_passant():
