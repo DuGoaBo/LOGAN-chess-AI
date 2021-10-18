@@ -2,10 +2,10 @@ import chess
 import torch
 
 def tensorize_board(board):
-    ret = torch.Tensor(8*8 + 3)
+    ret = torch.Tensor(67)
     if not board.turn == chess.WHITE:
         board = board.mirror()
-    for i in range(8 * 8):
+    for i in range(64):
         piece = board.piece_at(i)
         if piece is not None:
             piece_code = piece.piece_type
