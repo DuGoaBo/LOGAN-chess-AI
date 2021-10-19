@@ -15,10 +15,16 @@ def tensorize_board(board):
             ret[i] = 0
     if board.has_legal_en_passant():
         ret[-3] = 1
+    else:
+        ret[-3] = 0
     if board.has_kingside_castling_rights(chess.WHITE):
         ret[-2] = 1
+    else:
+        ret[-2] = 0
     if board.has_queenside_castling_rights(chess.WHITE):
         ret[-1] = 1
+    else:
+        ret[-1] = 0
     return ret
 
 

@@ -5,10 +5,10 @@ import copy
 from LOGAN_module import *
 from tensorize_board import *
 
-gamma = 0.95
+gamma = 0.99
 epsilon = 0.9
 learning_rate = 0.01
-epochs = 100
+epochs = 500
 episode_length = 200
 L_train = LOGAN_module()
 L_target = LOGAN_module()
@@ -38,25 +38,25 @@ def generate_training_episode(gamma, epsilon):
         b.push(next_move)
         if b.is_game_over():
             if b.outcome().winner == True:
-                ret_t[i] += 1
+                ret_t[i] += 10
             elif b.outcome().winner == False:
-                ret_t[i] -= 1
+                ret_t[i] -= 10
             print(b.outcome())
             return ret_x[:i], ret_t[:i]
-    print("game ended after 100 moves")
+    print("game ended after 200 moves")
     return ret_x, ret_t
-
 
 criterion = torch.nn.MSELoss()
 optimizer = torch.optim.SGD(L_train.parameters(), lr = learning_rate)
 for epoch in range(epochs):
+    print(epoch)
     train_x, train_t = generate_training_episode(gamma, epsilon)
     optimizer.zero_grad()
     outputs = L_train(train_x)
     loss = criterion(outputs, train_t)
     loss.backward()
     optimizer.step()
-    if epoch % 5 == 0:
+    if epoch % 20 == 0:
         L_target = copy.deepcopy(L_train)
     epsilon = epsilon ** 1.01
  

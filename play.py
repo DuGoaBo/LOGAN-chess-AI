@@ -5,13 +5,19 @@ from LOGAN_module import *
 
 L = torch.load("L")
 L.eval()
+print(list(L.named_parameters()))
 
 b = chess.Board()
 while True:
     print(str(b) + "\n")
     print("enter your move as a san")
     move = input("")
-    b.push_san(move)
+    try:
+        b.push_san(move)
+    except ValueError:
+        print("that move is not valid")
+        continue
+    print(L(tensorize_board(b)))
     computer_moves = list(b.legal_moves)
     best_computer_move = computer_moves[0]
     best_computer_move_eval = float("inf")
