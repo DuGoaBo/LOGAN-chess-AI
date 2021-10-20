@@ -29,7 +29,7 @@ def generate_training_episode(gamma, epsilon):
                 best_move_evaluation = move_evaluation
             b.pop()
         ret_x[i] = tensorize_board(b)
-        ret_t[i] = torch.tensor(calculate_material(b, ret_x[i]) + gamma * -1 * best_move_evaluation)
+        ret_t[i] = torch.tensor(gamma**2 * calculate_material(b, ret_x[i]) +  gamma * -1 * best_move_evaluation)
         r = random.random()
         next_move = moves[0]
         if r < epsilon:
