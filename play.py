@@ -28,4 +28,5 @@ while True:
             best_computer_move = move
             best_computer_move_eval = move_eval
         b.pop()
+    print(best_computer_move_eval)
     b.push(best_computer_move)

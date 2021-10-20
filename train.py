@@ -5,10 +5,10 @@ import copy
 from LOGAN_module import *
 from tensorize_board import *
 
-gamma = 0.99
-epsilon = 0.9
+gamma = 0.95
+epsilon = 0.1
 learning_rate = 0.01
-epochs = 30000
+epochs = 2000
 episode_length = 300
 L_train = LOGAN_module()
 L_target = LOGAN_module()
@@ -19,7 +19,7 @@ def generate_training_episode(gamma, epsilon):
     b = chess.Board()
     for i in range(episode_length):
         moves = list(b.legal_moves)
-        best_move = moves[0]
+        best_move = None
         best_move_evaluation = float("inf")
         for move in moves:
             b.push(move)
@@ -29,27 +29,19 @@ def generate_training_episode(gamma, epsilon):
                 best_move_evaluation = move_evaluation
             b.pop()
         ret_x[i] = tensorize_board(b)
-        ret_t[i] = torch.tensor(gamma**2 * calculate_material(b, ret_x[i]) +  gamma * -1 * best_move_evaluation)
+        ret_t[i] = torch.tensor(calculate_material(b, ret_x[i]) +  gamma * -1 * best_move_evaluation)
         r = random.random()
         next_move = moves[0]
-        if r < epsilon:
-            r2 = random.random()
-            if r2 < epsilon:
-                random.shuffle(moves)
-                for move in moves:
-                    if b.is_capture(move):
-                        next_move = move
-                        break
-            else:
-                next_move = random.choice(moves)
+        if r < epsilon or not best_move:
+            next_move = random.choice(moves)
         else:
             next_move = best_move
         b.push(next_move)
         if b.is_game_over():
             if b.outcome().winner == True:
-                ret_t[i] += 10
+                ret_t[i] += 100
             elif b.outcome().winner == False:
-                ret_t[i] -= 10
+                ret_t[i] -= 100
             print(b.outcome())
             return ret_x[:i], ret_t[:i]
     print("game ended after {} moves".format(episode_length))
@@ -65,10 +57,14 @@ for epoch in range(epochs):
     outputs = L_train(train_x)
     loss = criterion(outputs, train_t)
     loss.backward()
+    print(loss)
+    if loss > 200:
+        L_train = torch.load("L")
+        continue
     optimizer.step()
-    if epoch % 20 == 0:
+    if epoch % 100 == 0:
         L_target = copy.deepcopy(L_train)
         torch.save(L_train, "L")
-    epsilon = epsilon ** 1.001
+    epsilon = epsilon * 0.999
     print("\n")
  
