@@ -8,13 +8,13 @@ from tensorize_board import *
 gamma = 0.99
 epsilon = 0.9
 learning_rate = 0.01
-epochs = 500
-episode_length = 200
+epochs = 30000
+episode_length = 300
 L_train = LOGAN_module()
 L_target = LOGAN_module()
 
 def generate_training_episode(gamma, epsilon):
-    ret_x = torch.Tensor(episode_length, 67)
+    ret_x = torch.Tensor(episode_length, 1, 8, 8)
     ret_t = torch.Tensor(episode_length, 1)
     b = chess.Board()
     for i in range(episode_length):
@@ -29,10 +29,19 @@ def generate_training_episode(gamma, epsilon):
                 best_move_evaluation = move_evaluation
             b.pop()
         ret_x[i] = tensorize_board(b)
-        ret_t[i] = torch.tensor(gamma * -1 * best_move_evaluation)
+        ret_t[i] = torch.tensor(calculate_material(b, ret_x[i]) + gamma * -1 * best_move_evaluation)
         r = random.random()
+        next_move = moves[0]
         if r < epsilon:
-            next_move = random.choice(moves)
+            r2 = random.random()
+            if r2 < epsilon:
+                random.shuffle(moves)
+                for move in moves:
+                    if b.is_capture(move):
+                        next_move = move
+                        break
+            else:
+                next_move = random.choice(moves)
         else:
             next_move = best_move
         b.push(next_move)
@@ -43,13 +52,14 @@ def generate_training_episode(gamma, epsilon):
                 ret_t[i] -= 10
             print(b.outcome())
             return ret_x[:i], ret_t[:i]
-    print("game ended after 200 moves")
+    print("game ended after {} moves".format(episode_length))
     return ret_x, ret_t
 
 criterion = torch.nn.MSELoss()
 optimizer = torch.optim.SGD(L_train.parameters(), lr = learning_rate)
 for epoch in range(epochs):
-    print(epoch)
+    print("epoch: " + str(epoch))
+    print("epsilon: " + str(epsilon))
     train_x, train_t = generate_training_episode(gamma, epsilon)
     optimizer.zero_grad()
     outputs = L_train(train_x)
@@ -58,6 +68,7 @@ for epoch in range(epochs):
     optimizer.step()
     if epoch % 20 == 0:
         L_target = copy.deepcopy(L_train)
-    epsilon = epsilon ** 1.01
+        torch.save(L_train, "L")
+    epsilon = epsilon ** 1.001
+    print("\n")
  
-torch.save(L_train, "L")
