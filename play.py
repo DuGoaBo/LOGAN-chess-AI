@@ -4,7 +4,6 @@ from tensorize_board import *
 from LOGAN_module import *
 
 L = torch.load("L")
-L.eval()
 print(list(L.named_parameters()))
 
 b = chess.Board()

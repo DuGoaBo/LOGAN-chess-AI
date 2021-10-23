@@ -1,18 +1,19 @@
 import chess
 import torch
+piece_values = {1: 1., 2: 3., 3: 3.4, 4: 5, 5: 9, 6: 200.}
 
 def tensorize_board(board):
     ret = torch.Tensor(1, 1, 8, 8)
     if not board.turn == chess.WHITE:
         board = board.mirror()
     for i in range(64):
-        piece = board.piece_at(i)
         x = (64 - i - 1) // 8
         y = i % 8
+        piece = board.piece_at(i)
         if piece is not None:
-            piece_code = piece.piece_type
+            piece_value = piece_values[piece.piece_type]
             sign = 2*piece.color- 1 #1 for white, -1 for black
-            ret[0,0,x,y] = piece_code * sign
+            ret[0,0,x,y] = piece_value * sign
         else:
             ret[0,0,x,y] = 0
     if board.has_legal_en_passant():
@@ -27,6 +28,11 @@ def tensorize_board(board):
     return ret
 
 def calculate_material(board, tensorized_board):
+    if board.is_game_over():
+        if board.outcome().winner == chess.WHITE:
+            return 200
+        elif board.outcome().winner == chess.BLACK:
+            return -200
     ret = tensorized_board.sum().item()
     if board.has_kingside_castling_rights(chess.WHITE):
         ret -= 1
@@ -42,6 +48,5 @@ if __name__ == "__main__":
     a.push_san('e6')
     a.push_san('e5')
     a.push_san('d5')
-    a.push_san('exd6')
-    print(tensorize_board(a))
+    print(tensorize_board(a).float())
     print(calculate_material(a, tensorize_board(a)))

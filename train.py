@@ -5,11 +5,12 @@ import copy
 from LOGAN_module import *
 from tensorize_board import *
 
-gamma = 0.95
-epsilon = 0.1
+gamma = 0.9
+epsilon = 0.4
 learning_rate = 0.01
 epochs = 2000
 episode_length = 300
+episode_passes = 100
 L_train = LOGAN_module()
 L_target = LOGAN_module()
 
@@ -38,17 +39,21 @@ def generate_training_episode(gamma, epsilon):
             next_move = best_move
         b.push(next_move)
         if b.is_game_over():
-            if b.outcome().winner == True:
-                ret_t[i] += 100
-            elif b.outcome().winner == False:
-                ret_t[i] -= 100
             print(b.outcome())
+            print(b)
+            print(calculate_material(b, ret_x[i]))
+            print("game ended after {} moves".format(episode_length))
             return ret_x[:i], ret_t[:i]
+    print(b.outcome())
+    print(b)
+    print(calculate_material(b, ret_x[i]))
+    print("game ended after {} moves".format(episode_length))
     print("game ended after {} moves".format(episode_length))
     return ret_x, ret_t
 
 criterion = torch.nn.MSELoss()
-optimizer = torch.optim.SGD(L_train.parameters(), lr = learning_rate)
+optimizer = torch.optim.SGD(L_train.parameters(), lr = learning_rate, momentum=0.9)
+loss = torch.tensor(51)
 for epoch in range(epochs):
     print("epoch: " + str(epoch))
     print("epsilon: " + str(epsilon))
@@ -57,12 +62,18 @@ for epoch in range(epochs):
     outputs = L_train(train_x)
     loss = criterion(outputs, train_t)
     loss.backward()
-    print(loss)
-    if loss > 200:
-        L_train = torch.load("L")
-        continue
+    torch.nn.utils.clip_grad_norm_(L_train.parameters(), 1.0)
+    print("loss: " + str(loss.item()))
     optimizer.step()
-    if epoch % 100 == 0:
+    while loss.item() > 50:
+        optimizer.zero_grad()
+        outputs = L_train(train_x)
+        loss = criterion(outputs, train_t)
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(L_train.parameters(), 1.0)
+        print("loss: " + str(loss.item()))
+        optimizer.step()
+    if epoch % 10 == 0:
         L_target = copy.deepcopy(L_train)
         torch.save(L_train, "L")
     epsilon = epsilon * 0.999
