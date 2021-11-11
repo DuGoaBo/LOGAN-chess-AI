@@ -5,14 +5,17 @@ import copy
 from LOGAN_module import *
 from tensorize_board import *
 
+alpha = 0.5
 gamma = 0.9
-epsilon = 0.4
+epsilon = 0.1
 learning_rate = 0.01
-epochs = 2000
+episodes = 2000
+epochs = 100
 episode_length = 300
-episode_passes = 100
-L_train = LOGAN_module()
-L_target = LOGAN_module()
+L_train = torch.load("L")
+L_target = copy.deepcopy(L_train)
+#L_train = LOGAN_module()
+#L_target = LOGAN_module()
 
 def generate_training_episode(gamma, epsilon):
     ret_x = torch.Tensor(episode_length, 1, 8, 8)
@@ -30,7 +33,7 @@ def generate_training_episode(gamma, epsilon):
                 best_move_evaluation = move_evaluation
             b.pop()
         ret_x[i] = tensorize_board(b)
-        ret_t[i] = torch.tensor(calculate_material(b, ret_x[i]) +  gamma * -1 * best_move_evaluation)
+        ret_t[i] = torch.tensor((1-alpha)*L_target(ret_x[i].reshape([1,1,8,8])) + alpha * (calculate_material(b, ret_x[i]) +  gamma * -1 * best_move_evaluation))
         r = random.random()
         next_move = moves[0]
         if r < epsilon or not best_move:
@@ -52,30 +55,26 @@ def generate_training_episode(gamma, epsilon):
     return ret_x, ret_t
 
 criterion = torch.nn.MSELoss()
-optimizer = torch.optim.SGD(L_train.parameters(), lr = learning_rate, momentum=0.9)
+optimizer = torch.optim.SGD(L_train.parameters(), lr = learning_rate)
 loss = torch.tensor(51)
-for epoch in range(epochs):
-    print("epoch: " + str(epoch))
-    print("epsilon: " + str(epsilon))
+for episode in range(episodes):
     train_x, train_t = generate_training_episode(gamma, epsilon)
-    optimizer.zero_grad()
-    outputs = L_train(train_x)
-    loss = criterion(outputs, train_t)
-    loss.backward()
-    torch.nn.utils.clip_grad_norm_(L_train.parameters(), 1.0)
-    print("loss: " + str(loss.item()))
-    optimizer.step()
-    while loss.item() > 50:
-        optimizer.zero_grad()
-        outputs = L_train(train_x)
-        loss = criterion(outputs, train_t)
-        loss.backward()
-        torch.nn.utils.clip_grad_norm_(L_train.parameters(), 1.0)
-        print("loss: " + str(loss.item()))
-        optimizer.step()
-    if epoch % 10 == 0:
-        L_target = copy.deepcopy(L_train)
-        torch.save(L_train, "L")
-    epsilon = epsilon * 0.999
-    print("\n")
+    dataset = torch.utils.data.TensorDataset(train_x, train_t)
+    loader = torch.utils.data.DataLoader(dataset, batch_size = 20, shuffle = True)
+    for epoch in range(epochs):
+        print("episode " + str(episode) +  " epoch: " + str(epoch))
+        for data in loader:
+            optimizer.zero_grad()
+            inputs, labels = data
+            outputs = L_train(inputs)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(L_train.parameters(), 1.0)
+            print("loss: " + str(loss.item()))
+            optimizer.step()
+        if epoch % 10 == 0:
+            L_target = copy.deepcopy(L_train)
+            torch.save(L_train, "L")
+        epsilon = epsilon * 0.999
+        print("\n")
  
